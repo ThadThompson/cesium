@@ -60,6 +60,8 @@ define([
         var pixelDatatype = defaultValue(options.pixelDatatype, PixelDatatype.UNSIGNED_BYTE);
         var internalFormat = pixelFormat;
 
+        var isCompressed = PixelFormat.isCompressedFormat(internalFormat);
+
         if (context.webgl2) {
             if (pixelFormat === PixelFormat.DEPTH_STENCIL) {
                 internalFormat = WebGLConstants.DEPTH24_STENCIL8;
@@ -97,7 +99,7 @@ define([
             throw new DeveloperError('Invalid options.pixelFormat.');
         }
 
-        if (!PixelDatatype.validate(pixelDatatype)) {
+        if (!isCompressed && !PixelDatatype.validate(pixelDatatype)) {
             throw new DeveloperError('Invalid options.pixelDatatype.');
         }
 
@@ -123,6 +125,41 @@ define([
                 throw new DeveloperError('When options.pixelFormat is DEPTH_COMPONENT or DEPTH_STENCIL, this WebGL implementation must support WEBGL_depth_texture.  Check context.depthTexture.');
             }
         }
+
+        if (isCompressed) {
+            if (!defined(source) || !defined(source.arrayBufferView)) {
+                throw new DeveloperError('When options.pixelFormat is compressed, options.source.arrayBufferView must be defined.');
+            }
+
+            if (PixelFormat.isDXTFormat(internalFormat) && !context.s3tc) {
+                throw new DeveloperError('When options.pixelFormat is S3TC compressed, this WebGL implementation must support the WEBGL_texture_compression_s3tc extension. Check context.s3tc.');
+            } else if (PixelFormat.isPVRTCFormat(internalFormat) && !context.pvrtc) {
+                throw new DeveloperError('When options.pixelFormat is PVRTC compressed, this WebGL implementation must support the WEBGL_texture_compression_pvrtc extension. Check context.pvrtc.');
+            } else if (PixelFormat.isETC1Format(internalFormat) && !context.etc1) {
+                throw new DeveloperError('When options.pixelFormat is ETC1 compressed, this WebGL implementation must support the WEBGL_texture_compression_etc1 extension. Check context.etc1.');
+            }
+
+            var byteLength = source.arrayBufferView.byteLength;
+            var expectedSize = Math.max(width, 8) * Math.max(height, 8) / 2;
+            if ((internalFormat === PixelFormat.RGB_PVRTC_4BPPV1 || internalFormat === PixelFormat.RGBA_PVRTC_4BPPV1) && byteLength !== expectedSize) {
+                throw new DeveloperError('When options.pixelFormat is RGB_PVRTC_4BBPV1 or RGBA_PVRTC_4BPPV1, then options.source.arrayBufferView.byteLength must be max(width, 8) * max(height, 8) / 2.');
+            }
+
+            expectedSize = Math.max(width, 16) * Math.max(height, 8) / 4;
+            if ((internalFormat === PixelFormat.RGB_PVRTC_2BPPV1 || internalFormat === PixelFormat.RGBA_PVRTC_2BPPV1) && byteLength !== expectedSize) {
+                throw new DeveloperError('When options.pixelFormat is RGB_PVRTC_2BBPV1 or RGBA_PVRTC_2BPPV1, then options.source.arrayBufferView.byteLength must be max(width, 16) * max(height, 8) / 4.');
+            }
+
+            expectedSize = Math.floor((width + 3) / 4) * Math.floor((height + 3) / 4) * 8;
+            if ((internalFormat === PixelFormat.RGB_DXT1 || internalFormat === PixelFormat.RGBA_DXT1 || internalFormat === PixelFormat.RGB_ETC1) && byteLength !== expectedSize) {
+                throw new DeveloperError('When options.pixelFormat is RGB_DXT1, RGBA_DXT1 or RGB_ETC1, then options.source.arrayBufferView.byteLength must be floor((width + 3) / 4) * floor((height + 3) / 4) * 8.');
+            }
+
+            expectedSize = Math.floor((width + 3) / 4) * Math.floor((height + 3) / 4) * 16;
+            if ((internalFormat === PixelFormat.RGBA_DXT3 || internalFormat === PixelFormat.RGBA_DXT5) && byteLength !== expectedSize) {
+                throw new DeveloperError('When options.pixelFormat is RGBA_DXT3 or RGBA_DXT5, then options.source.arrayBufferView.byteLength must be floor((width + 3) / 4) * floor((height + 3) / 4) * 16.');
+            }
+        }
         //>>includeEnd('debug');
 
         // Use premultiplied alpha for opaque textures should perform better on Chrome:
@@ -144,7 +181,11 @@ define([
 
             if (defined(source.arrayBufferView)) {
                 // Source: typed array
-                gl.texImage2D(textureTarget, 0, internalFormat, width, height, 0, pixelFormat, pixelDatatype, source.arrayBufferView);
+                if (isCompressed) {
+                    gl.compressedTexImage2D(textureTarget, 0, internalFormat, width, height, 0, source.arrayBufferView);
+                } else {
+                    gl.texImage2D(textureTarget, 0, internalFormat, width, height, 0, pixelFormat, pixelDatatype, source.arrayBufferView);
+                }
             } else if (defined(source.framebuffer)) {
                 // Source: framebuffer
                 if (source.framebuffer !== context.defaultFramebuffer) {

@@ -20,6 +20,7 @@ define([
         '../Core/getStringFromTypedArray',
         '../Core/IndexDatatype',
         '../Core/loadArrayBuffer',
+        '../Core/loadDDS',
         '../Core/loadImage',
         '../Core/loadImageFromTypedArray',
         '../Core/loadText',
@@ -27,6 +28,7 @@ define([
         '../Core/Matrix2',
         '../Core/Matrix3',
         '../Core/Matrix4',
+        '../Core/PixelFormat',
         '../Core/PrimitiveType',
         '../Core/Quaternion',
         '../Core/Queue',
@@ -79,6 +81,7 @@ define([
         getStringFromTypedArray,
         IndexDatatype,
         loadArrayBuffer,
+        loadDDS,
         loadImage,
         loadImageFromTypedArray,
         loadText,
@@ -86,6 +89,7 @@ define([
         Matrix2,
         Matrix3,
         Matrix4,
+        PixelFormat,
         PrimitiveType,
         Quaternion,
         Queue,
@@ -1317,6 +1321,21 @@ define([
         };
     }
 
+    function ddsLoad(model, id) {
+        return function(data) {
+            var loadResources = model._loadResources;
+            --loadResources.pendingTextureLoads;
+            loadResources.texturesToCreate.enqueue({
+                id : id,
+                image : undefined,
+                bufferView : data.bufferView,
+                width : data.width,
+                height : data.height,
+                internalFormat : data.internalFormat
+            });
+        };
+    }
+
     function parseTextures(model) {
         var images = model.gltf.images;
         var textures = model.gltf.textures;
@@ -1337,7 +1356,16 @@ define([
                     ++model._loadResources.pendingTextureLoads;
                     var uri = new Uri(gltfImage.uri);
                     var imagePath = uri.resolve(model._baseUri).toString();
-                    loadImage(imagePath).then(imageLoad(model, id)).otherwise(getFailedLoadFunction(model, 'image', imagePath));
+
+                    var dotIndex = imagePath.lastIndexOf('.');
+                    var extension = imagePath.substring(dotIndex + 1);
+                    extension = extension.toLowerCase();
+
+                    if (extension === 'dds') {
+                        loadDDS(imagePath).then(ddsLoad(model, id)).otherwise(getFailedLoadFunction(model, 'image', imagePath));
+                    } else {
+                        loadImage(imagePath).then(imageLoad(model, id)).otherwise(getFailedLoadFunction(model, 'image', imagePath));
+                    }
                 }
             }
         }
@@ -1869,46 +1897,62 @@ define([
         var rendererSamplers = model._rendererResources.samplers;
         var sampler = rendererSamplers[texture.sampler];
 
+        var internalFormat = gltfTexture.internalFormat;
+
         var mipmap =
-            (sampler.minificationFilter === TextureMinificationFilter.NEAREST_MIPMAP_NEAREST) ||
-            (sampler.minificationFilter === TextureMinificationFilter.NEAREST_MIPMAP_LINEAR) ||
-            (sampler.minificationFilter === TextureMinificationFilter.LINEAR_MIPMAP_NEAREST) ||
-            (sampler.minificationFilter === TextureMinificationFilter.LINEAR_MIPMAP_LINEAR);
+            (!(defined(internalFormat) && PixelFormat.isCompressedFormat(internalFormat))) &&
+            ((sampler.minificationFilter === TextureMinificationFilter.NEAREST_MIPMAP_NEAREST) ||
+             (sampler.minificationFilter === TextureMinificationFilter.NEAREST_MIPMAP_LINEAR) ||
+             (sampler.minificationFilter === TextureMinificationFilter.LINEAR_MIPMAP_NEAREST) ||
+             (sampler.minificationFilter === TextureMinificationFilter.LINEAR_MIPMAP_LINEAR));
         var requiresNpot = mipmap ||
             (sampler.wrapS === TextureWrap.REPEAT) ||
             (sampler.wrapS === TextureWrap.MIRRORED_REPEAT) ||
             (sampler.wrapT === TextureWrap.REPEAT) ||
             (sampler.wrapT === TextureWrap.MIRRORED_REPEAT);
 
-        var source = gltfTexture.image;
-        var npot = !CesiumMath.isPowerOfTwo(source.width) || !CesiumMath.isPowerOfTwo(source.height);
-
-        if (requiresNpot && npot) {
-            // WebGL requires power-of-two texture dimensions for mipmapping and REPEAT/MIRRORED_REPEAT wrap modes.
-            var canvas = document.createElement('canvas');
-            canvas.width = CesiumMath.nextPowerOfTwo(source.width);
-            canvas.height = CesiumMath.nextPowerOfTwo(source.height);
-            var canvasContext = canvas.getContext('2d');
-            canvasContext.drawImage(source, 0, 0, source.width, source.height, 0, 0, canvas.width, canvas.height);
-            source = canvas;
-        }
-
         var tx;
+        var source = gltfTexture.image;
 
-        if (texture.target === WebGLConstants.TEXTURE_2D) {
+        if (defined(source)) {
+            var npot = !CesiumMath.isPowerOfTwo(source.width) || !CesiumMath.isPowerOfTwo(source.height);
+
+            if (requiresNpot && npot) {
+                // WebGL requires power-of-two texture dimensions for mipmapping and REPEAT/MIRRORED_REPEAT wrap modes.
+                var canvas = document.createElement('canvas');
+                canvas.width = CesiumMath.nextPowerOfTwo(source.width);
+                canvas.height = CesiumMath.nextPowerOfTwo(source.height);
+                var canvasContext = canvas.getContext('2d');
+                canvasContext.drawImage(source, 0, 0, source.width, source.height, 0, 0, canvas.width, canvas.height);
+                source = canvas;
+            }
+
+            if (texture.target === WebGLConstants.TEXTURE_2D) {
+                tx = new Texture({
+                    context : context,
+                    source : source,
+                    pixelFormat : texture.internalFormat,
+                    pixelDatatype : texture.type,
+                    sampler : sampler,
+                    flipY : false
+                });
+            }
+            // GLTF_SPEC: Support TEXTURE_CUBE_MAP.  https://github.com/KhronosGroup/glTF/issues/40
+
+            if (mipmap) {
+                tx.generateMipmap();
+            }
+        } else if (defined(internalFormat) && texture.target === WebGLConstants.TEXTURE_2D) {
             tx = new Texture({
                 context : context,
-                source : source,
-                pixelFormat : texture.internalFormat,
-                pixelDatatype : texture.type,
-                sampler : sampler,
+                source : {
+                    arrayBufferView : gltfTexture.bufferView
+                },
+                width : gltfTexture.width,
+                height : gltfTexture.height,
+                pixelFormat : internalFormat,
                 flipY : false
             });
-        }
-        // GLTF_SPEC: Support TEXTURE_CUBE_MAP.  https://github.com/KhronosGroup/glTF/issues/40
-
-        if (mipmap) {
-            tx.generateMipmap();
         }
 
         model._rendererResources.textures[gltfTexture.id] = tx;

@@ -69,6 +69,16 @@ define([
          */
         LUMINANCE_ALPHA : WebGLConstants.LUMINANCE_ALPHA,
 
+        RGB_DXT1 : WebGLConstants.COMPRESSED_RGB_S3TC_DXT1_EXT,
+        RGBA_DXT1 : WebGLConstants.COMPRESSED_RGBA_S3TC_DXT1_EXT,
+        RGBA_DXT3 : WebGLConstants.COMPRESSED_RGBA_S3TC_DXT3_EXT,
+        RGBA_DXT5 : WebGLConstants.COMPRESSED_RGBA_S3TC_DXT5_EXT,
+        RGB_PVRTC_4BPPV1 : WebGLConstants.COMPRESSED_RGB_PVRTC_4BPPV1_IMG,
+        RGB_PVRTC_2BPPV1 : WebGLConstants.COMPRESSED_RGB_PVRTC_2BPPV1_IMG,
+        RGBA_PVRTC_4BPPV1 : WebGLConstants.COMPRESSED_RGBA_PVRTC_4BPPV1_IMG,
+        RGBA_PVRTC_2BPPV1 : WebGLConstants.COMPRESSED_RGBA_PVRTC_2BPPV1_IMG,
+        RGB_ETC1 : WebGLConstants.COMPRESSED_RGB_ETC1_WEBGL,
+
         /**
          * @private
          */
@@ -79,7 +89,16 @@ define([
                    pixelFormat === PixelFormat.RGB ||
                    pixelFormat === PixelFormat.RGBA ||
                    pixelFormat === PixelFormat.LUMINANCE ||
-                   pixelFormat === PixelFormat.LUMINANCE_ALPHA;
+                   pixelFormat === PixelFormat.LUMINANCE_ALPHA ||
+                   pixelFormat === PixelFormat.RGB_DXT1 ||
+                   pixelFormat === PixelFormat.RGBA_DXT1 ||
+                   pixelFormat === PixelFormat.RGBA_DXT3 ||
+                   pixelFormat === PixelFormat.RGBA_DXT5 ||
+                   pixelFormat === PixelFormat.RGB_PVRTC_4BPPV1 ||
+                   pixelFormat === PixelFormat.RGB_PVRTC_2BPPV1 ||
+                   pixelFormat === PixelFormat.RGBA_PVRTC_4BPPV1 ||
+                   pixelFormat === PixelFormat.RGBA_PVRTC_2BPPV1 ||
+                   pixelFormat === PixelFormat.RGB_ETC1;
         },
 
         /**
@@ -99,6 +118,36 @@ define([
         isDepthFormat : function(pixelFormat) {
             return pixelFormat === PixelFormat.DEPTH_COMPONENT ||
                    pixelFormat === PixelFormat.DEPTH_STENCIL;
+        },
+
+        isCompressedFormat : function(pixelFormat) {
+            return pixelFormat === PixelFormat.RGB_DXT1 ||
+                   pixelFormat === PixelFormat.RGBA_DXT1 ||
+                   pixelFormat === PixelFormat.RGBA_DXT3 ||
+                   pixelFormat === PixelFormat.RGBA_DXT5 ||
+                   pixelFormat === PixelFormat.RGB_PVRTC_4BPPV1 ||
+                   pixelFormat === PixelFormat.RGB_PVRTC_2BPPV1 ||
+                   pixelFormat === PixelFormat.RGBA_PVRTC_4BPPV1 ||
+                   pixelFormat === PixelFormat.RGBA_PVRTC_2BPPV1 ||
+                   pixelFormat === PixelFormat.RGB_ETC1;
+        },
+
+        isDXTFormat : function(pixelFormat) {
+            return pixelFormat === PixelFormat.RGB_DXT1 ||
+                   pixelFormat === PixelFormat.RGBA_DXT1 ||
+                   pixelFormat === PixelFormat.RGBA_DXT3 ||
+                   pixelFormat === PixelFormat.RGBA_DXT5;
+        },
+
+        isPVRTCFormat : function(pixelFormat) {
+            return pixelFormat === PixelFormat.RGB_PVRTC_4BPPV1 ||
+                   pixelFormat === PixelFormat.RGB_PVRTC_2BPPV1 ||
+                   pixelFormat === PixelFormat.RGBA_PVRTC_4BPPV1 ||
+                   pixelFormat === PixelFormat.RGBA_PVRTC_2BPPV1;
+        },
+
+        isETC1Format : function(pixelFormat) {
+            return pixelFormat === PixelFormat.RGB_ETC1;
         }
     };
 
