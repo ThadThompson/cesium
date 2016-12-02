@@ -1346,12 +1346,16 @@ define([
                 // Image references either uri (external or base64-encoded) or bufferView
                 if (defined(gltfImage.extensions) && defined(gltfImage.extensions.KHR_binary_glTF)) {
                     var binary = gltfImage.extensions.KHR_binary_glTF;
-                    model._loadResources.texturesToCreateFromBufferView.enqueue({
-                        id : id,
-                        image : undefined,
-                        bufferView : binary.bufferView,
-                        mimeType : binary.mimeType
-                    });
+                    if (binary.mimeType === 'image/vnd-ms.dds') {
+                        loadDDS(model._loadResources.getBuffer(binary.bufferView)).then(ddsLoad(model, id));
+                    } else {
+                        model._loadResources.texturesToCreateFromBufferView.enqueue({
+                            id : id,
+                            image : undefined,
+                            bufferView : binary.bufferView,
+                            mimeType : binary.mimeType
+                        });
+                    }
                 } else {
                     ++model._loadResources.pendingTextureLoads;
                     var uri = new Uri(gltfImage.uri);

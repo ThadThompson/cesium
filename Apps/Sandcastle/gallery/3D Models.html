@@ -57,6 +57,11 @@ function createModel(url, height) {
 }
 
 var options = [{
+    text : 'Milk truck compressed',
+    onselect : function() {
+        createModel('../../SampleData/models/compressed/CesiumMilkTruck/CesiumMilkTruck.gltf', 0);
+    }
+}, {
     text : 'Aircraft',
     onselect : function() {
         createModel('../../SampleData/models/CesiumAir/Cesium_Air.glb', 5000.0);

@@ -193,8 +193,15 @@ define([
         callback(dxtData, width, height, levels, internalFormat);
     }
 
-    function loadDDS(url) {
-        return loadArrayBuffer(url).then(function(data) {
+    function loadDDS(urlOrBuffer) {
+        var loadPromise;
+        if (urlOrBuffer instanceof ArrayBuffer || ArrayBuffer.isView(urlOrBuffer)) {
+            loadPromise = when.resolve(urlOrBuffer);
+        } else {
+            loadPromise = loadArrayBuffer(urlOrBuffer);
+        }
+
+        return loadPromise.then(function(data) {
             var deferred = when.defer();
 
             var onloadCallback = function(dxtData, width, height, levels, internalFormat) {
