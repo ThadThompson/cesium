@@ -23,6 +23,7 @@ define([
         '../Core/loadDDS',
         '../Core/loadImage',
         '../Core/loadImageFromTypedArray',
+        '../Core/loadKTX',
         '../Core/loadText',
         '../Core/Math',
         '../Core/Matrix2',
@@ -84,6 +85,7 @@ define([
         loadDDS,
         loadImage,
         loadImageFromTypedArray,
+        loadKTX,
         loadText,
         CesiumMath,
         Matrix2,
@@ -1336,6 +1338,21 @@ define([
         };
     }
 
+    function ktxLoad(model, id) {
+        return function(data) {
+            var loadResources = model._loadResources;
+            --loadResources.pendingTextureLoads;
+            loadResources.texturesToCreate.enqueue({
+                id : id,
+                image : undefined,
+                bufferView : data.bufferView,
+                width : data.width,
+                height : data.height,
+                internalFormat : data.internalFormat
+            });
+        };
+    }
+
     function parseTextures(model) {
         var images = model.gltf.images;
         var textures = model.gltf.textures;
@@ -1346,7 +1363,9 @@ define([
                 // Image references either uri (external or base64-encoded) or bufferView
                 if (defined(gltfImage.extensions) && defined(gltfImage.extensions.KHR_binary_glTF)) {
                     var binary = gltfImage.extensions.KHR_binary_glTF;
-                    if (binary.mimeType === 'image/vnd-ms.dds') {
+                    if (binary.mimeType === 'image/ktx') {
+                        loadKTX(model._loadResources.getBuffer(binary.bufferView)).then(ktxLoad(model, id));
+                    } else if (binary.mimeType === 'image/vnd-ms.dds') {
                         loadDDS(model._loadResources.getBuffer(binary.bufferView)).then(ddsLoad(model, id));
                     } else {
                         model._loadResources.texturesToCreateFromBufferView.enqueue({
@@ -1365,7 +1384,9 @@ define([
                     var extension = imagePath.substring(dotIndex + 1);
                     extension = extension.toLowerCase();
 
-                    if (extension === 'dds') {
+                    if (extension === 'ktx') {
+                        loadKTX(imagePath).then(ktxLoad(model, id)).otherwise(getFailedLoadFunction(model, 'image', imagePath));
+                    } else if (extension === 'dds') {
                         loadDDS(imagePath).then(ddsLoad(model, id)).otherwise(getFailedLoadFunction(model, 'image', imagePath));
                     } else {
                         loadImage(imagePath).then(imageLoad(model, id)).otherwise(getFailedLoadFunction(model, 'image', imagePath));

@@ -57,9 +57,14 @@ function createModel(url, height) {
 }
 
 var options = [{
-    text : 'Milk truck compressed',
+    text : 'Milk truck compressed DXT',
     onselect : function() {
         createModel('../../SampleData/models/compressed/CesiumMilkTruck/CesiumMilkTruck.gltf', 0);
+    }
+}, {
+    text : 'Milk truck compressed PVR',
+    onselect : function() {
+        createModel('../../SampleData/models/compressed/CesiumMilkTruck/CesiumMilkTruckPVR.gltf', 0);
     }
 }, {
     text : 'Aircraft',
