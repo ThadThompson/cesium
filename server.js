@@ -41,7 +41,6 @@
     mime.define({
         'application/json' : ['czml', 'json', 'geojson', 'topojson'],
         'image/ktx' : ['ktx'],
-        'image/vnd-ms.dds' : ['dds'],
         'model/vnd.gltf+json' : ['gltf'],
         'model/vnd.gltf.binary' : ['bgltf', 'glb'],
         'text/plain' : ['glsl']
@@ -49,10 +48,6 @@
 
     var app = express();
     app.use(compression());
-    app.get('*.dds', function(req, res, next) {
-        res.header('Content-Encoding', 'gzip');
-        next();
-    });
     app.use(express.static(__dirname));
 
     function getRemoteUrlFromParam(req) {
