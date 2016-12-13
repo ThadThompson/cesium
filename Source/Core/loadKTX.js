@@ -121,7 +121,7 @@ define([
             }
         } else {
             if (glBaseInternalFormat !== glFormat) {
-                throw new DeveloperError('The base internal format must be the same as the format for uncompressed textures.')
+                throw new DeveloperError('The base internal format must be the same as the format for uncompressed textures.');
             }
         }
 
