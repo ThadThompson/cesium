@@ -1,15 +1,18 @@
 /*global define*/
 define([
-    '../ThirdParty/when',
-    './loadArrayBuffer',
-    './PixelFormat',
-    './RuntimeError'
-], function(
-    when,
-    loadArrayBuffer,
-    PixelFormat,
-    RuntimeError
-) {
+        '../ThirdParty/when',
+        './defined',
+        './DeveloperError',
+        './loadArrayBuffer',
+        './PixelFormat',
+        './RuntimeError'
+    ], function(
+        when,
+        defined,
+        DeveloperError,
+        loadArrayBuffer,
+        PixelFormat,
+        RuntimeError) {
     'use strict';
 
     var fileIdentifier = [0xAB, 0x4B, 0x54, 0x58, 0x20, 0x31, 0x31, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A];
@@ -36,12 +39,11 @@ define([
         var byteOffset = 12; // skip identifier
 
         var endianness = view.getUint32(byteOffset, true);
+        byteOffset += sizeOfUint32;
         if (endianness !== endiannessTest) {
             // TODO: Switch endianness?
             throw new RuntimeError('File is the wrong endianness.');
         }
-
-        byteOffset += sizeOfUint32;
 
         var glType = view.getUint32(byteOffset, true);
         byteOffset += sizeOfUint32;
@@ -164,6 +166,12 @@ define([
      * @see {@link http://wiki.commonjs.org/wiki/Promises/A|CommonJS Promises/A}
      */
     function loadKTX(urlOrBuffer, headers) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(urlOrBuffer)) {
+            throw new DeveloperError('urlOrBuffer is required.');
+        }
+        //>>includeEnd('debug');
+
         var loadPromise;
         if (urlOrBuffer instanceof ArrayBuffer || ArrayBuffer.isView(urlOrBuffer)) {
             loadPromise = when.resolve(urlOrBuffer);
