@@ -139,25 +139,8 @@ define([
                 throw new DeveloperError('When options.pixelFormat is ETC1 compressed, this WebGL implementation must support the WEBGL_texture_compression_etc1 extension. Check context.etc1.');
             }
 
-            var byteLength = source.arrayBufferView.byteLength;
-            var expectedSize = Math.max(width, 8) * Math.max(height, 8) / 2;
-            if ((internalFormat === PixelFormat.RGB_PVRTC_4BPPV1 || internalFormat === PixelFormat.RGBA_PVRTC_4BPPV1) && byteLength !== expectedSize) {
-                throw new DeveloperError('When options.pixelFormat is RGB_PVRTC_4BBPV1 or RGBA_PVRTC_4BPPV1, then options.source.arrayBufferView.byteLength must be max(width, 8) * max(height, 8) / 2.');
-            }
-
-            expectedSize = Math.max(width, 16) * Math.max(height, 8) / 4;
-            if ((internalFormat === PixelFormat.RGB_PVRTC_2BPPV1 || internalFormat === PixelFormat.RGBA_PVRTC_2BPPV1) && byteLength !== expectedSize) {
-                throw new DeveloperError('When options.pixelFormat is RGB_PVRTC_2BBPV1 or RGBA_PVRTC_2BPPV1, then options.source.arrayBufferView.byteLength must be max(width, 16) * max(height, 8) / 4.');
-            }
-
-            expectedSize = Math.floor((width + 3) / 4) * Math.floor((height + 3) / 4) * 8;
-            if ((internalFormat === PixelFormat.RGB_DXT1 || internalFormat === PixelFormat.RGBA_DXT1 || internalFormat === PixelFormat.RGB_ETC1) && byteLength !== expectedSize) {
-                throw new DeveloperError('When options.pixelFormat is RGB_DXT1, RGBA_DXT1 or RGB_ETC1, then options.source.arrayBufferView.byteLength must be floor((width + 3) / 4) * floor((height + 3) / 4) * 8.');
-            }
-
-            expectedSize = Math.floor((width + 3) / 4) * Math.floor((height + 3) / 4) * 16;
-            if ((internalFormat === PixelFormat.RGBA_DXT3 || internalFormat === PixelFormat.RGBA_DXT5) && byteLength !== expectedSize) {
-                throw new DeveloperError('When options.pixelFormat is RGBA_DXT3 or RGBA_DXT5, then options.source.arrayBufferView.byteLength must be floor((width + 3) / 4) * floor((height + 3) / 4) * 16.');
+            if (PixelFormat.compressedTextureSize(internalFormat, width, height) !== source.arrayBufferView.byteLength) {
+                throw new DeveloperError('The byte length of the array buffer is invalid for the compressed texture with the given width and height.');
             }
         }
         //>>includeEnd('debug');

@@ -1,42 +1,16 @@
 /*global define*/
 define([
     '../ThirdParty/when',
-    './DeveloperError',
     './loadArrayBuffer',
-    './PixelFormat'
+    './PixelFormat',
+    './RuntimeError'
 ], function(
     when,
-    DeveloperError,
     loadArrayBuffer,
-    PixelFormat
+    PixelFormat,
+    RuntimeError
 ) {
     'use strict';
-
-    function textureLevelSize(format, width, height) {
-        switch (format) {
-            // TODO: case ATC
-            case PixelFormat.RGB_DXT1:
-            case PixelFormat.RGBA_DXT1:
-            case PixelFormat.RGB_ETC1:
-                return ((width + 3) >> 2) * ((height + 3) >> 2) * 8;
-
-            // TODO: case atc explicit alpha, atc interpolated alpha
-            case PixelFormat.RGBA_DXT3:
-            case PixelFormat.RGBA_DXT5:
-                return ((width + 3) >> 2) * ((height + 3) >> 2) * 16;
-
-            case PixelFormat.RGB_PVRTC_4BPPV1:
-            case PixelFormat.RGBA_PVRTC_4BPPV1:
-                return Math.floor((Math.max(width, 8) * Math.max(height, 8) * 4 + 7) / 8);
-
-            case PixelFormat.RGB_PVRTC_2BPPV1:
-            case PixelFormat.RGBA_PVRTC_2BPPV1:
-                return Math.floor((Math.max(width, 16) * Math.max(height, 8) * 2 + 7) / 8);
-
-            default:
-                return 0;
-        }
-    }
 
     var fileIdentifier = [0xAB, 0x4B, 0x54, 0x58, 0x20, 0x31, 0x31, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A];
     var endiannessTest = 0x04030201;
@@ -55,7 +29,7 @@ define([
         }
 
         if (!isKTX) {
-            throw new DeveloperError('Invalid KTX file.');
+            throw new RuntimeError('Invalid KTX file.');
         }
 
         var view = new DataView(data);
@@ -63,8 +37,8 @@ define([
 
         var endianness = view.getUint32(byteOffset, true);
         if (endianness !== endiannessTest) {
-            // TODO: Switch endianness
-            throw new DeveloperError('File is the wrong endianness.');
+            // TODO: Switch endianness?
+            throw new RuntimeError('File is the wrong endianness.');
         }
 
         byteOffset += sizeOfUint32;
@@ -102,44 +76,52 @@ define([
 
         var texture = new Uint8Array(data, byteOffset, imageSize);
 
+        // Some tools use a sized internal format.
+        // See table 2: https://www.opengl.org/sdk/docs/man/html/glTexImage2D.xhtml
+        if (glInternalFormat === 0x8051) {         // GL_RGB8
+            glInternalFormat = PixelFormat.RGB;
+        } else if (glInternalFormat === 0x8058) {  // GL_RGBA8
+            glInternalFormat = PixelFormat.RGBA;
+        }
+
         if (!PixelFormat.validate(glInternalFormat)) {
-            throw new DeveloperError('glInternalFormat is not a valid format.');
+            throw new RuntimeError('glInternalFormat is not a valid format.');
         }
 
         if (PixelFormat.isCompressedFormat(glInternalFormat)) {
             if (glType !== 0) {
-                throw new DeveloperError('glType must be zero when the texture is compressed.');
+                throw new RuntimeError('glType must be zero when the texture is compressed.');
             }
             if (glTypeSize !== 1) {
-                throw new DeveloperError('The type size for compressed textures must be 1.');
+                throw new RuntimeError('The type size for compressed textures must be 1.');
             }
             if (glFormat !== 0) {
-                throw new DeveloperError('glFormat must be zero when the texture is compressed.');
+                throw new RuntimeError('glFormat must be zero when the texture is compressed.');
             }
             if (numberOfMipmapLevels === 0) {
-                throw new DeveloperError('Generating mipmaps for a compressed texture is unsupported.');
+                throw new RuntimeError('Generating mipmaps for a compressed texture is unsupported.');
             }
         } else {
             if (glBaseInternalFormat !== glFormat) {
-                throw new DeveloperError('The base internal format must be the same as the format for uncompressed textures.');
+                throw new RuntimeError('The base internal format must be the same as the format for uncompressed textures.');
             }
         }
 
         if (pixelDepth !== 0) {
-            throw new DeveloperError('3D textures are unsupported.');
+            throw new RuntimeError('3D textures are unsupported.');
         }
 
         // TODO: support texture arrays and cubemaps
         if (numberOfArrayElements !== 0) {
-            throw new DeveloperError('Texture arrays are unsupported.');
+            throw new RuntimeError('Texture arrays are unsupported.');
         }
         if (numberOfFaces !== 1) {
-            throw new DeveloperError('Cubemaps are unsupported.');
+            throw new RuntimeError('Cubemaps are unsupported.');
         }
 
         // TODO: multiple mipmap levels
         if (PixelFormat.isCompressedFormat(glInternalFormat) && numberOfMipmapLevels > 1) {
-            var levelSize = textureLevelSize(glInternalFormat, pixelWidth, pixelHeight);
+            var levelSize = PixelFormat.compressedTextureSize(glInternalFormat, pixelWidth, pixelHeight);
             texture = new Uint8Array(texture.buffer, 0, levelSize);
         }
 
@@ -151,12 +133,42 @@ define([
         };
     }
 
-    function loadKTX(urlOrBuffer) {
+    /**
+     * Asynchronously loads and parses the given URL to a KTX file or parses the raw binary data of a KTX file.
+     * Returns a promise that will resolve to an object containing the image buffer, width, height and format once loaded,
+     * or reject if the URL failed to load or failed to parse the data.  The data is loaded
+     * using XMLHttpRequest, which means that in order to make requests to another origin,
+     * the server must have Cross-Origin Resource Sharing (CORS) headers enabled.
+     *
+     * @exports loadKTX
+     *
+     * @param {String|Promise.<String>|ArrayBuffer} urlOrBuffer The URL of the binary data, a promise for the URL, or an ArrayBuffer.
+     * @param {Object} [headers] HTTP headers to send with the requests.
+     * @returns {Promise.<Object>} A promise that will resolve to the requested data when loaded.
+     *
+     *
+     * @example
+     * // load a single URL asynchronously
+     * Cesium.loadKTX('some/url').then(function(ktxData) {
+     *     var width = ktxData.width;
+     *     var height = ktxData.height;
+     *     var format = ktxData.internalFormat;
+     *     var arrayBufferView = ktxData.bufferView;
+     *     // use the data to create a texture
+     * }).otherwise(function(error) {
+     *     // an error occurred
+     * });
+     *
+     * @see {@link https://www.khronos.org/opengles/sdk/tools/KTX/file_format_spec/|KTX file format}
+     * @see {@link http://www.w3.org/TR/cors/|Cross-Origin Resource Sharing}
+     * @see {@link http://wiki.commonjs.org/wiki/Promises/A|CommonJS Promises/A}
+     */
+    function loadKTX(urlOrBuffer, headers) {
         var loadPromise;
         if (urlOrBuffer instanceof ArrayBuffer || ArrayBuffer.isView(urlOrBuffer)) {
             loadPromise = when.resolve(urlOrBuffer);
         } else {
-            loadPromise = loadArrayBuffer(urlOrBuffer);
+            loadPromise = loadArrayBuffer(urlOrBuffer, headers);
         }
 
         return loadPromise.then(function(data) {
