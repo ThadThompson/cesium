@@ -1394,22 +1394,10 @@ define([
             loadResources.texturesToCreate.enqueue({
                 id : id,
                 image : image,
-                bufferView : undefined
-            });
-        };
-    }
-
-    function ktxLoad(model, id) {
-        return function(data) {
-            var loadResources = model._loadResources;
-            --loadResources.pendingTextureLoads;
-            loadResources.texturesToCreate.enqueue({
-                id : id,
-                image : undefined,
-                bufferView : data.bufferView,
-                width : data.width,
-                height : data.height,
-                internalFormat : data.internalFormat
+                bufferView : image.bufferView,
+                width : image.width,
+                height : image.height,
+                internalFormat : image.internalFormat
             });
         };
     }
@@ -1425,7 +1413,7 @@ define([
                 if (defined(gltfImage.extensions) && defined(gltfImage.extensions.KHR_binary_glTF)) {
                     var binary = gltfImage.extensions.KHR_binary_glTF;
                     if (binary.mimeType === 'image/ktx') {
-                        loadKTX(model._loadResources.getBuffer(binary.bufferView)).then(ktxLoad(model, id));
+                        loadKTX(model._loadResources.getBuffer(binary.bufferView)).then(imageLoad(model, id));
                     } else {
                         model._loadResources.texturesToCreateFromBufferView.enqueue({
                             id : id,
@@ -1444,7 +1432,7 @@ define([
                     extension = extension.toLowerCase();
 
                     if (extension === 'ktx') {
-                        loadKTX(imagePath).then(ktxLoad(model, id)).otherwise(getFailedLoadFunction(model, 'image', imagePath));
+                        loadKTX(imagePath).then(imageLoad(model, id)).otherwise(getFailedLoadFunction(model, 'image', imagePath));
                     } else {
                         loadImage(imagePath).then(imageLoad(model, id)).otherwise(getFailedLoadFunction(model, 'image', imagePath));
                     }
@@ -2037,7 +2025,18 @@ define([
         var tx;
         var source = gltfTexture.image;
 
-        if (defined(source)) {
+        if (defined(internalFormat) && texture.target === WebGLConstants.TEXTURE_2D) {
+            tx = new Texture({
+                context : context,
+                source : {
+                    arrayBufferView : gltfTexture.bufferView
+                },
+                width : gltfTexture.width,
+                height : gltfTexture.height,
+                pixelFormat : internalFormat,
+                flipY : false
+            });
+        } else if (defined(source)) {
             var npot = !CesiumMath.isPowerOfTwo(source.width) || !CesiumMath.isPowerOfTwo(source.height);
 
             if (requiresNpot && npot) {
@@ -2065,17 +2064,6 @@ define([
             if (mipmap) {
                 tx.generateMipmap();
             }
-        } else if (defined(internalFormat) && texture.target === WebGLConstants.TEXTURE_2D) {
-            tx = new Texture({
-                context : context,
-                source : {
-                    arrayBufferView : gltfTexture.bufferView
-                },
-                width : gltfTexture.width,
-                height : gltfTexture.height,
-                pixelFormat : internalFormat,
-                flipY : false
-            });
         }
 
         model._rendererResources.textures[gltfTexture.id] = tx;
