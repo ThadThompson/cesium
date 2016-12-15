@@ -221,7 +221,7 @@ define([
      * @returns {Texture} A texture with contents from the framebuffer.
      *
      * @exception {DeveloperError} Invalid pixelFormat.
-     * @exception {DeveloperError} pixelFormat cannot be DEPTH_COMPONENT or DEPTH_STENCIL.
+     * @exception {DeveloperError} pixelFormat cannot be DEPTH_COMPONENT, DEPTH_STENCIL or a compressed format.
      * @exception {DeveloperError} framebufferXOffset must be greater than or equal to zero.
      * @exception {DeveloperError} framebufferYOffset must be greater than or equal to zero.
      * @exception {DeveloperError} framebufferXOffset + width must be less than or equal to canvas.clientWidth.
@@ -261,27 +261,21 @@ define([
         if (!defined(options.context)) {
             throw new DeveloperError('context is required.');
         }
-
         if (!PixelFormat.validate(pixelFormat)) {
             throw new DeveloperError('Invalid pixelFormat.');
         }
-
-        if (PixelFormat.isDepthFormat(pixelFormat)) {
-            throw new DeveloperError('pixelFormat cannot be DEPTH_COMPONENT or DEPTH_STENCIL.');
+        if (PixelFormat.isDepthFormat(pixelFormat) || PixelFormat.isCompressedFormat(pixelFormat)) {
+            throw new DeveloperError('pixelFormat cannot be DEPTH_COMPONENT, DEPTH_STENCIL or a compressed format.');
         }
-
         if (framebufferXOffset < 0) {
             throw new DeveloperError('framebufferXOffset must be greater than or equal to zero.');
         }
-
         if (framebufferYOffset < 0) {
             throw new DeveloperError('framebufferYOffset must be greater than or equal to zero.');
         }
-
         if (framebufferXOffset + width > gl.drawingBufferWidth) {
             throw new DeveloperError('framebufferXOffset + width must be less than or equal to drawingBufferWidth');
         }
-
         if (framebufferYOffset + height > gl.drawingBufferHeight) {
             throw new DeveloperError('framebufferYOffset + height must be less than or equal to drawingBufferHeight.');
         }
@@ -403,6 +397,7 @@ define([
      * @param {Number} [yOffset=0] The offset in the y direction within the texture to copy into.
      *
      * @exception {DeveloperError} Cannot call copyFrom when the texture pixel format is DEPTH_COMPONENT or DEPTH_STENCIL.
+     * @exception {DeveloperError} Cannot call copyFrom with a compressed texture pixel format.
      * @exception {DeveloperError} xOffset must be greater than or equal to zero.
      * @exception {DeveloperError} yOffset must be greater than or equal to zero.
      * @exception {DeveloperError} xOffset + source.width must be less than or equal to width.
@@ -426,6 +421,9 @@ define([
         }
         if (PixelFormat.isDepthFormat(this._pixelFormat)) {
             throw new DeveloperError('Cannot call copyFrom when the texture pixel format is DEPTH_COMPONENT or DEPTH_STENCIL.');
+        }
+        if (PixelFormat.isCompressedFormat(this._pixelFormat)) {
+            throw new DeveloperError('Cannot call copyFrom with a compressed texture pixel format.');
         }
         if (xOffset < 0) {
             throw new DeveloperError('xOffset must be greater than or equal to zero.');
@@ -469,6 +467,7 @@ define([
      *
      * @exception {DeveloperError} Cannot call copyFromFramebuffer when the texture pixel format is DEPTH_COMPONENT or DEPTH_STENCIL.
      * @exception {DeveloperError} Cannot call copyFromFramebuffer when the texture pixel data type is FLOAT.
+     * @exception {DeveloperError} Cannot call copyFrom with a compressed texture pixel format.
      * @exception {DeveloperError} This texture was destroyed, i.e., destroy() was called.
      * @exception {DeveloperError} xOffset must be greater than or equal to zero.
      * @exception {DeveloperError} yOffset must be greater than or equal to zero.
@@ -491,6 +490,9 @@ define([
         }
         if (this._pixelDatatype === PixelDatatype.FLOAT) {
             throw new DeveloperError('Cannot call copyFromFramebuffer when the texture pixel data type is FLOAT.');
+        }
+        if (PixelFormat.isCompressedFormat(this._pixelFormat)) {
+            throw new DeveloperError('Cannot call copyFrom with a compressed texture pixel format.');
         }
         if (xOffset < 0) {
             throw new DeveloperError('xOffset must be greater than or equal to zero.');
@@ -536,6 +538,9 @@ define([
         //>>includeStart('debug', pragmas.debug);
         if (PixelFormat.isDepthFormat(this._pixelFormat)) {
             throw new DeveloperError('Cannot call generateMipmap when the texture pixel format is DEPTH_COMPONENT or DEPTH_STENCIL.');
+        }
+        if (PixelFormat.isCompressedFormat(this._pixelFormat)) {
+            throw new DeveloperError('Cannot call generateMipmap with a compressed pixel format.');
         }
         if (this._width > 1 && !CesiumMath.isPowerOfTwo(this._width)) {
             throw new DeveloperError('width must be a power of two to call generateMipmap().');
