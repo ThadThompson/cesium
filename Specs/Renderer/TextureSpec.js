@@ -1042,7 +1042,7 @@ defineSuite([
         }).toThrowDeveloperError();
     });
 
-    it('throws when copyFrom is givven a source with a compressed pixel format', function() {
+    it('throws when copyFrom is given a source with a compressed pixel format', function() {
         if (context.s3tc) {
             texture = new Texture({
                 context : context,
