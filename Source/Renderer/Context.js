@@ -270,6 +270,7 @@ define([
         this._elementIndexUint = !!getExtension(gl, ['OES_element_index_uint']);
         this._depthTexture = !!getExtension(gl, ['WEBGL_depth_texture', 'WEBKIT_WEBGL_depth_texture']);
         this._textureFloat = !!getExtension(gl, ['OES_texture_float']);
+        this._textureFloatLinear = !!getExtension(gl, ['OES_texture_float_linear']);
         this._fragDepth = !!getExtension(gl, ['EXT_frag_depth']);
         this._debugShaders = getExtension(gl, ['WEBGL_debug_shaders']);
 
@@ -584,6 +585,16 @@ define([
         floatingPointTexture : {
             get : function() {
                 return this._textureFloat;
+            }
+        },
+
+        /**
+         * <code>true</code> if OES_texture_float_linear is supported.
+         * @type {Boolean}
+         */
+        floatingPointTextureLinear : {
+            get : function() {
+                return this._textureFloatLinear;
             }
         },
 

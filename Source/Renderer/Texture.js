@@ -305,9 +305,18 @@ define([
                     (minificationFilter === TextureMinificationFilter.LINEAR_MIPMAP_LINEAR);
 
                 // float textures only support nearest filtering, so override the sampler's settings
+                // - unless we also support hardware accelerated linear interpolation for float textures,
+                // in which case we'll use that.
                 if (this._pixelDatatype === PixelDatatype.FLOAT) {
-                    minificationFilter = mipmap ? TextureMinificationFilter.NEAREST_MIPMAP_NEAREST : TextureMinificationFilter.NEAREST;
-                    magnificationFilter = TextureMagnificationFilter.NEAREST;
+                    if(mipmap){
+                        minificationFilter = NEAREST_MIPMAP_NEAREST;
+                    } else if(this._context.floatingPointTextureLinear){
+                        minificationFilter = TextureMinificationFilter.LINEAR;
+                        magnificationFilter = TextureMagnificationFilter.LINEAR;
+                    } else {
+                        minificationFilter = TextureMinificationFilter.NEAREST;
+                        magnificationFilter = TextureMagnificationFilter.NEAREST;
+                    }
                 }
 
                 var gl = this._context._gl;
