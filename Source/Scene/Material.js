@@ -858,7 +858,7 @@ define([
             // Add uniform declaration to source code.
             var uniformDeclarationRegex = new RegExp('uniform\\s+' + uniformType + '\\s+' + uniformId + '\\s*;');
             if (!uniformDeclarationRegex.test(material.shaderSource)) {
-                var uniformDeclaration = 'uniform ' + uniformType + ' ' + uniformId + ';';
+                var uniformDeclaration = 'uniform ' + uniformType + ' ' + uniformId + ';\n';
                 material.shaderSource = uniformDeclaration + material.shaderSource;
             }
 
@@ -918,6 +918,8 @@ define([
                     if (uniformValue.length === 4 || uniformValue.length === 9 || uniformValue.length === 16) {
                         uniformType = 'mat' + Math.sqrt(uniformValue.length);
                     }
+                } else if (uniformValue instanceof Texture) {
+                    uniformType = 'sampler2D';
                 } else {
                     var numAttributes = 0;
                     for ( var attribute in uniformValue) {
